@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: mycities-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: mycities
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: mycities_user
+      MYSQL_PASSWORD: mycities_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - mycities-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Laravel Backend (PHP-FPM for Nginx)
+  laravel:
+    build:
+      context: ./laravel
+      dockerfile: Dockerfile
+    container_name: mycities-laravel
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      - APP_NAME=MyCities
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=http://localhost
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=mycities
+      - DB_USERNAME=mycities_user
+      - DB_PASSWORD=mycities_password
+      - SESSION_DRIVER=file
+      - CACHE_DRIVER=file
+      - QUEUE_CONNECTION=sync
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - mycities-network
+    expose:
+      - "9000"
+
+  # Vue/Quasar Frontend (static)
+  web:
+    build:
+      context: ./vue-quasar
+      dockerfile: Dockerfile
+    container_name: mycities-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    networks:
+      - mycities-network
+
+  # Nginx Web Server (reverse proxy to Laravel)
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: mycities-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - laravel
+    networks:
+      - mycities-network
+
+volumes:
+  mysql_data:
+
+networks:
+  mycities-network:
+    driver: bridge
+
