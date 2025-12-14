@@ -52,6 +52,8 @@ services:
       - mycities-network
     expose:
       - "9000"
+    volumes:
+      - laravel_public:/var/www/html/public
 
   # Vue/Quasar Frontend (static)
   web:
@@ -78,11 +80,13 @@ services:
       - laravel
     networks:
       - mycities-network
+    volumes:
+      - laravel_public:/var/www/html/public:ro
 
 volumes:
   mysql_data:
+  laravel_public:
 
 networks:
   mycities-network:
     driver: bridge
-
