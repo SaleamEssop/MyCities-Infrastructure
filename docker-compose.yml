@@ -60,10 +60,10 @@ services:
       dockerfile: Dockerfile
     container_name: mycities-web
     restart: unless-stopped
-    ports:
-      - "8080:80"
     networks:
       - mycities-network
+    expose:
+      - "80"
 
   # Nginx Web Server (reverse proxy to Laravel)
   nginx:
