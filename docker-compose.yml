@@ -1,4 +1,4 @@
-services:
+﻿services:
   # MySQL Database
   mysql:
     image: mysql:8.0
@@ -53,11 +53,11 @@ services:
     volumes:
       - laravel_public:/var/www/html/public
     healthcheck:
-      test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pgrep php-fpm || exit 1"]
+      interval: 10s
+      timeout: 5s
       retries: 3
-      start_period: 60s
+      start_period: 30s
 
   # Vue/Quasar Frontend (static)
   web:
