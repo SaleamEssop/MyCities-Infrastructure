@@ -3,8 +3,8 @@
 # Install curl for healthcheck
 RUN apk add --no-cache curl
 
-# Create certbot webroot directory
-RUN mkdir -p /var/www/certbot
+# Create certbot webroot directory structure (with .well-known subdirectory)
+RUN mkdir -p /var/www/certbot/.well-known/acme-challenge
 
 COPY default.conf /etc/nginx/conf.d/default.conf
 
