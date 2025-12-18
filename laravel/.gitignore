@@ -1,0 +1,36 @@
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.phpunit.result.cache
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.idea
+/.vscode
+
+# Laravel storage (cache, sessions, logs)
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+!/storage/framework/cache/.gitkeep
+!/storage/framework/sessions/.gitkeep
+!/storage/framework/views/.gitkeep
+!/storage/logs/.gitkeep
+
+# Compiled assets (will be built in Docker)
+/public/css/app.css
+/public/js/app.js
+/public/js/app.js.LICENSE.txt
+/public/mix-manifest.json
+
+# OS files
+.DS_Store
+Thumbs.db
+

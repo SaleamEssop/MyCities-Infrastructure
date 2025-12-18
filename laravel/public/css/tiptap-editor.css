@@ -1,0 +1,416 @@
+/**
+ * TipTap Editor Styles for Laravel Admin
+ */
+
+.tiptap-editor {
+    border: 1px solid #d1d3e2;
+    border-radius: 0.35rem;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* Toolbar */
+.tiptap-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 12px;
+    background: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+    align-items: center;
+}
+
+.toolbar-group {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background: #d1d3e2;
+    margin: 0 8px;
+}
+
+.tiptap-toolbar button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #5a5c69;
+    transition: all 0.15s ease;
+}
+
+.tiptap-toolbar button:hover {
+    background: #eaecf4;
+    color: #4e73df;
+}
+
+.tiptap-toolbar button.active {
+    background: #4e73df;
+    color: white;
+}
+
+.tiptap-toolbar button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.tiptap-toolbar select {
+    height: 32px;
+    padding: 4px 8px;
+    border: 1px solid #d1d3e2;
+    border-radius: 4px;
+    background: white;
+    font-size: 13px;
+    color: #5a5c69;
+    cursor: pointer;
+}
+
+.tiptap-toolbar select:focus {
+    outline: none;
+    border-color: #4e73df;
+}
+
+/* Editor Content */
+.tiptap-content {
+    min-height: 350px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.tiptap-content .ProseMirror {
+    outline: none;
+    min-height: 300px;
+}
+
+.tiptap-content .ProseMirror > * + * {
+    margin-top: 0.75em;
+}
+
+/* Typography */
+.tiptap-content h1 {
+    font-size: 2em;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 0.5em;
+}
+
+.tiptap-content h2 {
+    font-size: 1.5em;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.5em;
+}
+
+.tiptap-content h3 {
+    font-size: 1.25em;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.5em;
+}
+
+.tiptap-content h4 {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.5em;
+}
+
+.tiptap-content p {
+    line-height: 1.7;
+    color: #4a5568;
+}
+
+.tiptap-content a {
+    color: #4e73df;
+    text-decoration: underline;
+}
+
+.tiptap-content strong {
+    font-weight: 700;
+}
+
+.tiptap-content em {
+    font-style: italic;
+}
+
+.tiptap-content u {
+    text-decoration: underline;
+}
+
+.tiptap-content s {
+    text-decoration: line-through;
+}
+
+/* Lists */
+.tiptap-content ul,
+.tiptap-content ol {
+    padding-left: 1.5em;
+    margin: 1em 0;
+}
+
+.tiptap-content ul {
+    list-style-type: disc;
+}
+
+.tiptap-content ol {
+    list-style-type: decimal;
+}
+
+.tiptap-content li {
+    margin: 0.25em 0;
+}
+
+/* Blockquote */
+.tiptap-content blockquote {
+    border-left: 4px solid #4e73df;
+    padding-left: 1em;
+    margin: 1em 0;
+    color: #6c757d;
+    font-style: italic;
+    background: #f8f9fc;
+    padding: 1em;
+    border-radius: 0 4px 4px 0;
+}
+
+/* Code */
+.tiptap-content code {
+    background: #f1f3f5;
+    border-radius: 3px;
+    padding: 0.2em 0.4em;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.9em;
+    color: #e83e8c;
+}
+
+.tiptap-content pre {
+    background: #2d3748;
+    border-radius: 8px;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.tiptap-content pre code {
+    background: none;
+    color: #e2e8f0;
+    padding: 0;
+    font-size: 0.9em;
+}
+
+/* Images */
+.tiptap-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1em 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tiptap-content img.ProseMirror-selectednode {
+    outline: 3px solid #4e73df;
+}
+
+/* Horizontal Rule */
+.tiptap-content hr {
+    border: none;
+    border-top: 2px solid #e3e6f0;
+    margin: 2em 0;
+}
+
+/* Placeholder */
+.tiptap-content .is-empty::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #adb5bd;
+    pointer-events: none;
+    height: 0;
+    font-style: italic;
+}
+
+/* Text Alignment */
+.tiptap-content [style*="text-align: left"] {
+    text-align: left;
+}
+
+.tiptap-content [style*="text-align: center"] {
+    text-align: center;
+}
+
+.tiptap-content [style*="text-align: right"] {
+    text-align: right;
+}
+
+.tiptap-content [style*="text-align: justify"] {
+    text-align: justify;
+}
+
+/* Image Modal */
+.tiptap-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.tiptap-modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.tiptap-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e3e6f0;
+    background: #f8f9fc;
+}
+
+.tiptap-modal-header h5 {
+    margin: 0;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.tiptap-modal-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #858796;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.tiptap-modal-header .close-btn:hover {
+    color: #e74a3b;
+}
+
+.tiptap-modal-body {
+    padding: 20px;
+}
+
+.tiptap-modal-body .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.tiptap-modal-body .tab-btn {
+    padding: 8px 16px;
+    border: 1px solid #d1d3e2;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #5a5c69;
+    transition: all 0.15s;
+}
+
+.tiptap-modal-body .tab-btn:hover {
+    background: #f8f9fc;
+}
+
+.tiptap-modal-body .tab-btn.active {
+    background: #4e73df;
+    border-color: #4e73df;
+    color: white;
+}
+
+.tiptap-modal-body .tab-content {
+    display: none;
+}
+
+.tiptap-modal-body .tab-content.active {
+    display: block;
+}
+
+.tiptap-modal-body .form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d3e2;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.tiptap-modal-body .form-control:focus {
+    outline: none;
+    border-color: #4e73df;
+    box-shadow: 0 0 0 2px rgba(78, 115, 223, 0.2);
+}
+
+.tiptap-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid #e3e6f0;
+    background: #f8f9fc;
+}
+
+.tiptap-modal-footer .btn {
+    padding: 8px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+}
+
+.tiptap-modal-footer .btn-secondary {
+    background: #858796;
+    color: white;
+}
+
+.tiptap-modal-footer .btn-secondary:hover {
+    background: #6c757d;
+}
+
+.tiptap-modal-footer .btn-primary {
+    background: #4e73df;
+    color: white;
+}
+
+.tiptap-modal-footer .btn-primary:hover {
+    background: #2e59d9;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .tiptap-toolbar {
+        padding: 6px 8px;
+    }
+    
+    .toolbar-divider {
+        display: none;
+    }
+    
+    .tiptap-toolbar button {
+        width: 28px;
+        height: 28px;
+    }
+}
+
+
+

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MyCities - Reset Data</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #3294B8 0%, #1a5a6e 100%);
+      color: white;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 16px;
+    }
+    h1 { margin-bottom: 20px; }
+    p { margin-bottom: 30px; }
+    .success { color: #4CAF50; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 Resetting MyCities Data...</h1>
+    <p id="status">Clearing localStorage...</p>
+  </div>
+  <script>
+    // Clear all localStorage
+    localStorage.clear();
+    
+    // Update status
+    document.getElementById('status').innerHTML = '<span class="success">✅ Data cleared successfully!</span><br><br>Redirecting to app...';
+    
+    // Redirect to the app after 2 seconds
+    setTimeout(function() {
+      window.location.href = '/web-app/#/login';
+    }, 2000);
+  </script>
+</body>
+</html>
+

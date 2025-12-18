@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Cache - MyCities</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; background: #f5f5f5; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #3294B8; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { background: #3294B8; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 10px 5px; }
+        button:hover { background: #2a7a9a; }
+        #log { background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .auto-msg { background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Browser Cache</h1>
+        <div id="auto-msg" class="auto-msg" style="display:none;">⏳ Auto-clearing cache...</div>
+        <p>This will clear all cached data for MyCities app.</p>
+        
+        <button onclick="clearAll(false)">Clear Everything & Reload</button>
+        <button onclick="window.location.href='/web-app/?v=' + Date.now()">Go to App</button>
+        
+        <div id="log"></div>
+    </div>
+
+    <script>
+        function log(msg) {
+            document.getElementById('log').innerHTML += msg + '<br>';
+            console.log('[CacheClear] ' + msg);
+        }
+
+        async function clearAll(autoMode) {
+            if (autoMode) {
+                document.getElementById('auto-msg').style.display = 'block';
+            }
+            log('Starting cache clear...');
+            
+            var itemsCleared = 0;
+            
+            // 1. Unregister all service workers
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    log('Found ' + registrations.length + ' service workers');
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                        log('✓ Unregistered: ' + registration.scope);
+                        itemsCleared++;
+                    }
+                } catch(e) { log('⚠ SW error: ' + e.message); }
+            }
+            
+            // 2. Clear all caches
+            if ('caches' in window) {
+                try {
+                    const cacheNames = await caches.keys();
+                    log('Found ' + cacheNames.length + ' caches');
+                    for (const name of cacheNames) {
+                        await caches.delete(name);
+                        log('✓ Deleted cache: ' + name);
+                        itemsCleared++;
+                    }
+                } catch(e) { log('⚠ Cache error: ' + e.message); }
+            }
+            
+            // 3. Clear localStorage (except our marker)
+            try {
+                const keys = Object.keys(localStorage);
+                keys.forEach(key => localStorage.removeItem(key));
+                log('✓ Cleared localStorage (' + keys.length + ' items)');
+                if (keys.length > 0) itemsCleared++;
+            } catch(e) { log('⚠ localStorage: ' + e.message); }
+            
+            // 4. Clear sessionStorage
+            try {
+                sessionStorage.clear();
+                log('✓ Cleared sessionStorage');
+            } catch(e) { log('⚠ sessionStorage: ' + e.message); }
+            
+            // 5. Clear IndexedDB
+            if ('indexedDB' in window && indexedDB.databases) {
+                try {
+                    const databases = await indexedDB.databases();
+                    log('Found ' + databases.length + ' IndexedDB databases');
+                    for (const db of databases) {
+                        if (db.name) {
+                            indexedDB.deleteDatabase(db.name);
+                            log('✓ Deleted DB: ' + db.name);
+                            itemsCleared++;
+                        }
+                    }
+                } catch(e) { log('⚠ IndexedDB error: ' + e.message); }
+            }
+            
+            // Set a marker that cache was just cleared
+            try {
+                localStorage.setItem('mycities_cache_cleared', Date.now().toString());
+            } catch(e) {}
+            
+            log('');
+            log('✅ DONE! Cleared ' + itemsCleared + ' items.');
+            log('Redirecting to app...');
+            
+            // Redirect with cache-busting query string
+            var delay = autoMode ? 500 : 1500;
+            setTimeout(function() {
+                window.location.href = '/web-app/?cache_cleared=' + Date.now() + '#/login';
+            }, delay);
+        }
+        
+        // Auto-run if URL has ?auto parameter or if referred from the app
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            if (params.has('auto') || document.referrer.includes('/web-app')) {
+                clearAll(true);
+            }
+        })();
+    </script>
+</body>
+</html>
+
