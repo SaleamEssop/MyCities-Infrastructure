@@ -1,4 +1,4 @@
-﻿services:
+services:
   # MySQL Database
   mysql:
     image: mysql:8.0
@@ -53,7 +53,7 @@
     volumes:
       - laravel_public:/var/www/html/public
     healthcheck:
-      test: ["CMD-SHELL", "pgrep php-fpm || exit 1"]
+      test: ["CMD-SHELL", "php-fpm -t 2>/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
