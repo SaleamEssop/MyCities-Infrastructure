@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database
   mysql:
@@ -7,10 +5,10 @@ services:
     container_name: mycities-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: mycities
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_USER: mycities_user
-      MYSQL_PASSWORD: mycities_password
+      MYSQL_DATABASE: ${DB_DATABASE:-mycities}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-MyCities2024Root!}
+      MYSQL_USER: ${DB_USERNAME:-mycities_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-MyCities2024Pass!}
     ports:
       - "3306:3306"
     volumes:
@@ -33,15 +31,15 @@ services:
     working_dir: /var/www/html
     environment:
       - APP_NAME=MyCities
-      - APP_ENV=production
-      - APP_DEBUG=false
-      - APP_URL=https://www.mycities.co.za
+      - APP_ENV=${APP_ENV:-production}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_URL=${APP_URL:-https://www.mycities.co.za}
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_DATABASE=mycities
-      - DB_USERNAME=mycities_user
-      - DB_PASSWORD=mycities_password
+      - DB_DATABASE=${DB_DATABASE:-mycities}
+      - DB_USERNAME=${DB_USERNAME:-mycities_user}
+      - DB_PASSWORD=${DB_PASSWORD:-MyCities2024Pass!}
       - SESSION_DRIVER=file
       - CACHE_DRIVER=file
       - QUEUE_CONNECTION=sync
@@ -54,6 +52,12 @@ services:
       - "9000"
     volumes:
       - laravel_public:/var/www/html/public
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # Vue/Quasar Frontend (static)
   web:
@@ -66,8 +70,13 @@ services:
       - mycities-network
     expose:
       - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Nginx Web Server (reverse proxy to Laravel)
+  # Nginx Web Server
   nginx:
     build:
       context: ./nginx
@@ -76,16 +85,39 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
-      - laravel
+      laravel:
+        condition: service_healthy
+      web:
+        condition: service_healthy
     networks:
       - mycities-network
     volumes:
       - laravel_public:/var/www/html/public:ro
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Certbot for SSL certificates
+  certbot:
+    image: certbot/certbot
+    container_name: mycities-certbot
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 volumes:
   mysql_data:
   laravel_public:
+  certbot_certs:
+  certbot_www:
 
 networks:
   mycities-network:
