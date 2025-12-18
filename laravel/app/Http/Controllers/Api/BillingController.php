@@ -802,7 +802,7 @@ class BillingController extends Controller
             $balanceBF = $runningBalance; // Can be positive (owed) or negative (credit)
             $periodOwing = $consumptionWithVat + $balanceBF; // Credit reduces the owing
             $balance = $periodOwing - $totalPayments;
-            $runningBalance = $balance;
+            // Month-to-month: balance not carried forward
 
             $periods[] = [
                 'start_date' => $prevDate->format('Y-m-d'),
