@@ -132,6 +132,22 @@ php artisan key:generate --force 2>/dev/null || true\n\
 echo "Running migrations..."\n\
 php artisan migrate --force\n\
 \n\
+# Auto-sync external database schema if configured (deployment-triggered)\n\
+echo "Checking for external database schema sync..."\n\
+if php artisan tinker --execute="\n\
+    try {\n\
+        \$settings = DB::table('settings')->first();\n\
+        echo (\$settings && \$settings->db_mode === 'external' && \$settings->external_db_host) ? 'sync-needed' : 'no-sync';\n\
+    } catch (Exception \$e) {\n\
+        echo 'no-sync';\n\
+    }\n\
+" 2>/dev/null | grep -q 'sync-needed'; then\n\
+    echo "External DB configured - syncing schema from internal to external..."\n\
+    php artisan db:sync-schema --from=internal --to=external --quiet || echo "Schema sync failed - check external DB configuration"\n\
+else\n\
+    echo "No external DB configured - skipping schema sync"\n\
+fi\n\
+\n\
 # Run seeders (idempotent - safe to run multiple times)\n\
 echo "Running seeders..."\n\
 php artisan db:seed --force 2>/dev/null || true\n\
