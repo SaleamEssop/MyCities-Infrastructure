@@ -3,8 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdsController;
+use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\PagesController;
 use App\Http\Controllers\RegionsCostController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TariffTemplateController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\UserAccountSetupController;
@@ -17,9 +19,7 @@ use Illuminate\Support\Facades\Auth;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return view('landing_page');
-});
+Route::get('/', [LandingPageController::class, 'show'])->name('landing');
 
 Route::get('/app', function () {
     return view('web_app_blade');
@@ -174,6 +174,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function() {
     Route::get('ads/edit/{id}', [AdsController::class, 'edit'])->name('edit-ads-form');
     Route::post('ads/edit', [AdsController::class, 'update'])->name('edit-ad');
     Route::get('ads/delete/{id}', [AdsController::class, 'destroy'])->name('delete-ad');
+    Route::get('ads/landing-settings', [AdsController::class, 'landingSettings'])->name('ads.landing-settings');
+    Route::post('ads/landing-settings', [AdsController::class, 'saveLandingSettings'])->name('ads.landing-settings.save');
     
     // --- ADS CATEGORIES ---
     Route::get('ads-categories', [AdsController::class, 'categories'])->name('ads-categories');
@@ -194,4 +196,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function() {
     Route::get('pages/preview/{id}', [PagesController::class, 'preview'])->name('pages-preview');
     Route::post('pages/toggle-active/{id}', [PagesController::class, 'toggleActive'])->name('pages-toggle-active');
     Route::post('pages/update-order', [PagesController::class, 'updateOrder'])->name('pages-update-order');
+
+    // --- APPLICATION SETTINGS ---
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('settings', [SettingsController::class, 'update'])->name('settings.update');
 });

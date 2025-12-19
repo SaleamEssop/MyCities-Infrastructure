@@ -27,7 +27,7 @@ class PageSeeder extends Seeder
     {
         $page = Page::updateOrCreate(
             ['slug' => $data['slug']], // Find by slug (unique identifier)
-            array_merge($data, ['parent_id' => $parentId])
+            array_merge($data, ['parent_id' => $parentId, 'is_demo' => 1]) // Mark as demo content
         );
         return $page;
     }

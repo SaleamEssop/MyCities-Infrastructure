@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Ads;
 use App\Models\AdsCategory;
+use App\Models\Settings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,7 +17,17 @@ class AdsController extends Controller
      */
     public function index()
     {
-        $ads = Ads::with('category')->orderBy('priority')->get();
+        $settings = Settings::first();
+        $demoMode = $settings->demo_mode ?? true;
+
+        if ($demoMode) {
+            // Demo mode: show all ads including demo content
+            $ads = Ads::with('category')->orderBy('priority')->get();
+        } else {
+            // Production mode: hide demo ads
+            $ads = Ads::with('category')->where('is_demo', false)->orderBy('priority')->get();
+        }
+        
         $categories = AdsCategory::all();
         return view('admin.ads', compact('ads', 'categories'));
     }
@@ -210,6 +222,65 @@ class AdsController extends Controller
                 'url' => $url
             ]);
         }
+    }
+
+    /**
+     * Landing page settings (background/title/subtitle)
+     */
+    public function landingSettings()
+    {
+        $settings = Settings::first();
+        return view('admin.landing_settings', compact('settings'));
+    }
+
+    /**
+     * Save landing page settings
+     */
+    public function saveLandingSettings(Request $request)
+    {
+        $request->validate([
+            'landing_title' => 'nullable|string|max:255',
+            'landing_subtitle' => 'nullable|string',
+            'landing_background' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:4096',
+            'landing_background_url' => 'nullable|url',
+        ]);
+
+        $settings = Settings::first() ?? new Settings();
+
+        // Remove previous file if we are replacing it
+        $replaceImage = false;
+
+        if ($request->hasFile('landing_background')) {
+            $replaceImage = true;
+            $path = $request->file('landing_background')->store('public/landing');
+            $settings->landing_background = $path;
+        } elseif ($request->filled('landing_background_url')) {
+            $replaceImage = true;
+            try {
+                $response = Http::timeout(10)->get($request->landing_background_url);
+                if ($response->successful()) {
+                    $ext = pathinfo(parse_url($request->landing_background_url, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'jpg';
+                    $filename = 'public/landing/url_' . time() . '.' . $ext;
+                    Storage::put($filename, $response->body());
+                    $settings->landing_background = $filename;
+                }
+            } catch (\Throwable $e) {
+                // ignore and keep old image if download fails
+            }
+        }
+
+        if ($replaceImage && $settings->getRawOriginal('landing_background')) {
+            Storage::delete($settings->getRawOriginal('landing_background'));
+        }
+
+        $settings->landing_title = $request->landing_title ?? $settings->landing_title;
+        $settings->landing_subtitle = $request->landing_subtitle ?? $settings->landing_subtitle;
+        $settings->save();
+
+        Session::flash('alert-class', 'alert-success');
+        Session::flash('alert-message', 'Landing page settings updated');
+
+        return redirect()->route('ads.landing-settings');
     }
 }
 

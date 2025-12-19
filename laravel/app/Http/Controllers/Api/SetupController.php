@@ -440,7 +440,65 @@ class SetupController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
-    public function getCurrentAccount(Request $request): JsonResponse
+    /**
+     * Get account details by ID for editing
+     */
+    public function getAccountDetails(Request $request, $accountId): JsonResponse
+    {
+        $user = $request->user();
+        
+        $account = \App\Models\Account::with(['site', 'tariffTemplate', 'meters'])
+            ->where('id', $accountId)
+            ->first();
+        
+        if (!$account) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Account not found.',
+            ], 404);
+        }
+        
+        if ($account->site && $account->site->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized.',
+            ], 403);
+        }
+        
+        $tariff = $account->tariffTemplate;
+        
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $account->id,
+                'account_name' => $account->account_name,
+                'account_number' => $account->account_number,
+                'name_as_per_bill' => $account->name_as_per_bill,
+                'billing_day' => $account->billing_day ?? $tariff?->billing_day,
+                'read_day' => $account->read_day ?? $tariff?->read_day,
+                'water_email' => $account->water_email,
+                'electricity_email' => $account->electricity_email,
+                'tariff_template_id' => $account->tariff_template_id,
+                'region_id' => $tariff?->region_id,
+                'customer_costs' => $tariff?->customer_costs ?? [],
+                'site' => $account->site ? [
+                    'id' => $account->site->id,
+                    'title' => $account->site->title,
+                    'address' => $account->site->address,
+                ] : null,
+                'tariff' => $tariff ? [
+                    'id' => $tariff->id,
+                    'template_name' => $tariff->template_name,
+                    'billing_type' => $tariff->billing_type,
+                    'billing_day' => $tariff->billing_day,
+                    'read_day' => $tariff->read_day,
+                    'region_id' => $tariff->region_id,
+                ] : null,
+            ],
+        ]);
+    }
+
+        public function getCurrentAccount(Request $request): JsonResponse
     {
         $user = $request->user();
         

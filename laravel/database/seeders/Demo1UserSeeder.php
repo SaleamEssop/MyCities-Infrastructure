@@ -105,6 +105,7 @@ class Demo1UserSeeder extends Seeder
                 'contact_number' => '0821234567',
                 'email_verified_at' => now(),
                 'is_admin' => 0,
+                'is_demo' => 1,  // Mark as demo user
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

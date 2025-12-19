@@ -22,12 +22,14 @@ class Page extends Model
         'show_in_navigation',
         'meta_title',
         'meta_description',
+        'is_demo',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'show_in_navigation' => 'boolean',
         'sort_order' => 'integer',
+        'is_demo' => 'boolean',
     ];
 
     /**

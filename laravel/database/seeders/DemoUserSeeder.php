@@ -120,6 +120,7 @@ class DemoUserSeeder extends Seeder
                 'name' => 'Demo User',
                 'password' => Hash::make('demo123'),
                 'contact_number' => '0821234567',
+                'is_demo' => 1,  // Mark as demo user
             ]
         );
         $this->command->info("User: {$user->email} (ID: {$user->id})");

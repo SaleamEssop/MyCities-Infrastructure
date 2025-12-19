@@ -9,6 +9,7 @@ use App\Models\MeterReadings;
 use App\Models\MeterType;
 use App\Models\Regions;
 use App\Models\RegionsAccountTypeCost;
+use App\Models\Settings;
 use App\Models\Site;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -30,7 +31,17 @@ class UserManagementController extends Controller
      */
     public function index()
     {
-        $users = User::withCount('sites')->get();
+        $settings = Settings::first();
+        $demoMode = $settings->demo_mode ?? true;
+
+        if ($demoMode) {
+            // Demo mode: show all users including demo accounts
+            $users = User::withCount('sites')->get();
+        } else {
+            // Production mode: hide demo users
+            $users = User::where('is_demo', false)->withCount('sites')->get();
+        }
+        
         $regions = Regions::all();
         $meterTypes = MeterType::all();
         

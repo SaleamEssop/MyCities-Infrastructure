@@ -11,6 +11,9 @@
             <button type="button" class="btn btn-warning btn-circle" data-toggle="modal" data-target="#catModal">
                 <i class="fas fa-plus-square"></i>
             </button>
+        <a class="btn btn-primary ml-2" href="{{ route('ads.landing-settings') }}">
+            Edit Landing Page
+        </a>
         </div>
 
         <!-- DataTales Example -->

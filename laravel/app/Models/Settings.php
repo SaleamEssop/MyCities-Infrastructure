@@ -9,5 +9,15 @@ class Settings extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['terms_condition'];
+    protected $fillable = [
+        'terms_condition',
+        'landing_background',
+        'landing_title',
+        'landing_subtitle',
+        'demo_mode',
+    ];
+
+    protected $casts = [
+        'demo_mode' => 'boolean',
+    ];
 }

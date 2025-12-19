@@ -24,6 +24,7 @@ class User extends Authenticatable
         'password',
         'is_admin',
         'is_super_admin',
+        'is_demo',
     ];
 
     /**
@@ -43,6 +44,7 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_demo' => 'boolean',
     ];
 
     public function sites()

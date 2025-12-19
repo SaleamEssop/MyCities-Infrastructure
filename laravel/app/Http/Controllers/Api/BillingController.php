@@ -264,6 +264,8 @@ class BillingController extends Controller
 
     /**
      * Get meter data including readings and calculated charges.
+     * For MONTHLY billing: calculates consumption from billing day to latest reading.
+     * Opening reading on billing day is interpolated if no actual reading exists.
      */
     private function getMeterData(?Meter $meter, $tariff, string $type): array
     {
@@ -282,7 +284,7 @@ class BillingController extends Controller
             ->orderBy('reading_date', 'asc')
             ->get();
 
-        if ($readings->count() < 2) {
+        if ($readings->isEmpty()) {
             return [
                 'enabled' => true,
                 'meter' => [
@@ -290,27 +292,68 @@ class BillingController extends Controller
                     'number' => $meter->meter_number,
                     'title' => $meter->meter_title,
                 ],
-                'readings' => $readings->map(fn($r) => [
-                    'id' => $r->id,
-                    'value' => $r->reading_value,
-                    'date' => $r->reading_date,
-                    'type' => $r->reading_type,
-                ])->toArray(),
+                'readings' => [],
                 'consumption' => 0,
                 'charges' => ['total' => 0, 'breakdown' => []],
             ];
         }
 
-        $openingReading = $readings->first();
+        // Get billing day from tariff (default 20)
+        $billingDay = $tariff->billing_day ?? 20;
+        $now = Carbon::now();
+        
+        // Calculate current billing period start (the billing day of the current or previous month)
+        $periodStart = $now->copy()->setDay($billingDay)->startOfDay();
+        if ($now->day < $billingDay) {
+            // We haven't reached billing day this month, so period started last month
+            $periodStart->subMonth();
+        }
+        
+        // Period end is the next billing day
+        $periodEnd = $periodStart->copy()->addMonth();
+        
+        // Get the latest reading as closing
         $closingReading = $readings->last();
-        $consumption = max(0, $closingReading->reading_value - $openingReading->reading_value);
-
+        $closingDate = Carbon::parse($closingReading->reading_date);
+        $closingValue = $closingReading->reading_value;
+        
+        // Calculate opening reading VALUE for the billing day (interpolated if needed)
+        $openingValue = $this->getReadingValueForDate($readings, $periodStart);
+        $openingType = 'INTERPOLATED';
+        
+        // Check if there's an actual reading on the period start date
+        $actualOpening = $readings->first(function($r) use ($periodStart) {
+            return Carbon::parse($r->reading_date)->format('Y-m-d') === $periodStart->format('Y-m-d');
+        });
+        if ($actualOpening) {
+            $openingValue = $actualOpening->reading_value;
+            $openingType = 'ACTUAL';
+        }
+        
+        // If no readings after period start, use 6-month average to estimate
+        $hasReadingsAfterPeriodStart = $readings->filter(function($r) use ($periodStart) {
+            return Carbon::parse($r->reading_date)->gt($periodStart);
+        })->isNotEmpty();
+        
+        $estimatedClosing = false;
+        if (!$hasReadingsAfterPeriodStart) {
+            // No readings after period start - estimate using 6-month average
+            $sixMonthAvg = $this->getSixMonthDailyAverage($readings);
+            $daysSincePeriodStart = $periodStart->diffInDays($now);
+            $closingValue = $openingValue + ($sixMonthAvg * $daysSincePeriodStart);
+            $closingDate = $now;
+            $estimatedClosing = true;
+        }
+        
+        // Calculate consumption
+        $consumption = max(0, $closingValue - $openingValue);
+        
+        // Calculate days in current reading period
+        $daysBetween = $periodStart->diffInDays($closingDate);
+        $dailyAverage = $daysBetween > 0 ? $consumption / $daysBetween : 0;
+        
         // Calculate charges based on tariff
         $charges = $this->calculateChargesForConsumption($tariff, $consumption, $type);
-
-        // Calculate daily average
-        $daysBetween = Carbon::parse($openingReading->reading_date)->diffInDays(Carbon::parse($closingReading->reading_date));
-        $dailyAverage = $daysBetween > 0 ? $consumption / $daysBetween : 0;
 
         return [
             'enabled' => true,
@@ -325,17 +368,21 @@ class BillingController extends Controller
                 'date' => $r->reading_date,
                 'type' => $r->reading_type,
             ])->toArray(),
+            'period_start' => $periodStart->toDateString(),
+            'period_end' => $periodEnd->toDateString(),
             'opening_reading' => [
-                'value' => $openingReading->reading_value,
-                'date' => $openingReading->reading_date,
+                'value' => round($openingValue, 0),
+                'date' => $periodStart->toDateString(),
+                'type' => $openingType,
             ],
             'closing_reading' => [
-                'value' => $closingReading->reading_value,
-                'date' => $closingReading->reading_date,
+                'value' => round($closingValue, 0),
+                'date' => $closingDate instanceof Carbon ? $closingDate->toDateString() : $closingDate,
+                'type' => $estimatedClosing ? 'ESTIMATED' : ($closingReading->reading_type ?? 'ACTUAL'),
             ],
-            'consumption' => $consumption,
+            'consumption' => round($consumption, 0),
             'consumption_kl' => $type === 'water' ? round($consumption / 1000, 2) : null,
-            'consumption_kwh' => $type === 'electricity' ? $consumption : null,
+            'consumption_kwh' => $type === 'electricity' ? round($consumption, 0) : null,
             'daily_average' => round($dailyAverage, 2),
             'daily_average_formatted' => $type === 'water' 
                 ? round($dailyAverage, 0) . ' L' 
@@ -348,81 +395,198 @@ class BillingController extends Controller
     }
 
     /**
+     * Get/interpolate reading value for a specific date.
+     * If no exact reading exists, interpolates between surrounding readings.
+     */
+    private function getReadingValueForDate($readings, Carbon $targetDate): float
+    {
+        // Check for exact match first
+        $exact = $readings->first(function($r) use ($targetDate) {
+            return Carbon::parse($r->reading_date)->format('Y-m-d') === $targetDate->format('Y-m-d');
+        });
+        if ($exact) {
+            return $exact->reading_value;
+        }
+        
+        // Find readings before and after target date
+        $before = null;
+        $after = null;
+        
+        foreach ($readings as $reading) {
+            $readingDate = Carbon::parse($reading->reading_date);
+            if ($readingDate->lt($targetDate)) {
+                $before = $reading;
+            } elseif ($readingDate->gt($targetDate) && !$after) {
+                $after = $reading;
+                break;
+            }
+        }
+        
+        // If no reading before, use first reading
+        if (!$before && $readings->isNotEmpty()) {
+            return $readings->first()->reading_value;
+        }
+        
+        // If no reading after, use last reading
+        if (!$after) {
+            return $before->reading_value;
+        }
+        
+        // Interpolate between before and after
+        $beforeDate = Carbon::parse($before->reading_date);
+        $afterDate = Carbon::parse($after->reading_date);
+        $totalDays = $beforeDate->diffInDays($afterDate);
+        $daysFromBefore = $beforeDate->diffInDays($targetDate);
+        
+        if ($totalDays == 0) {
+            return $before->reading_value;
+        }
+        
+        $consumption = $after->reading_value - $before->reading_value;
+        $dailyRate = $consumption / $totalDays;
+        
+        return $before->reading_value + ($dailyRate * $daysFromBefore);
+    }
+
+    /**
+     * Calculate 6-month daily average consumption.
+     * Used for estimation when no recent readings exist.
+     */
+    private function getSixMonthDailyAverage($readings): float
+    {
+        if ($readings->count() < 2) {
+            return 0;
+        }
+        
+        $sixMonthsAgo = Carbon::now()->subMonths(6);
+        
+        // Filter readings within last 6 months
+        $recentReadings = $readings->filter(function($r) use ($sixMonthsAgo) {
+            return Carbon::parse($r->reading_date)->gte($sixMonthsAgo);
+        });
+        
+        if ($recentReadings->count() < 2) {
+            // Fall back to all readings if not enough in 6 months
+            $recentReadings = $readings;
+        }
+        
+        $first = $recentReadings->first();
+        $last = $recentReadings->last();
+        
+        $totalConsumption = $last->reading_value - $first->reading_value;
+        $totalDays = Carbon::parse($first->reading_date)->diffInDays(Carbon::parse($last->reading_date));
+        
+        return $totalDays > 0 ? $totalConsumption / $totalDays : 0;
+    }
+
+    /**
      * Calculate charges for a given consumption based on tariff.
+     */
+    /**
+     * Calculate ALL charges - water_in, water_out, additional, fixed, customer costs
      */
     private function calculateChargesForConsumption($tariff, float $consumption, string $type): array
     {
-        $total = 0;
+        $waterInTotal = 0;
+        $waterOutTotal = 0;
+        $additionalTotal = 0;
+        $fixedTotal = 0;
+        $customerTotal = 0;
         $breakdown = [];
 
-        if ($type === 'water' && !empty($tariff->water_in)) {
-            $tiers = $tariff->water_in;
-            $remainingLitres = $consumption;
-            $tierNumber = 0;
+        if ($type === 'water') {
+            // WATER IN - Tiered
+            if (!empty($tariff->water_in)) {
+                $remaining = $consumption;
+                $tierNum = 0;
+                foreach ($tariff->water_in as $tier) {
+                    $tierNum++;
+                    if ($remaining <= 0) break;
+                    $min = (float)($tier['min'] ?? 0);
+                    $max = isset($tier['max']) && $tier['max'] !== '' ? (float)$tier['max'] : PHP_FLOAT_MAX;
+                    $cost = (float)($tier['cost'] ?? 0);
+                    $capacity = $max - $min;
+                    $inTier = min($remaining, $capacity);
+                    $kl = $inTier / 1000;
+                    $charge = $kl * $cost;
+                    $waterInTotal += $charge;
+                    $breakdown[] = ['type'=>'water_in','tier'=>$tierNum,'label'=>'Tier '.$tierNum.' ('.($min/1000).'-'.($max===PHP_FLOAT_MAX?'ÃƒÂ¢Ã‹â€ Ã…Â¾':$max/1000).' kL)','units_kl'=>round($kl,2),'rate'=>$cost,'charge'=>round($charge,2)];
+                    $remaining -= $inTier;
+                }
+            }
 
-            foreach ($tiers as $tier) {
-                $tierNumber++;
-                if ($remainingLitres <= 0) break;
+            // WATER OUT - Sewerage
+            if (!empty($tariff->water_out)) {
+                foreach ($tariff->water_out as $item) {
+                    $pct = (float)($item['percentage'] ?? 100);
+                    $cost = (float)($item['cost'] ?? 0);
+                    $kl = ($consumption * $pct / 100) / 1000;
+                    $charge = $kl * $cost;
+                    $waterOutTotal += $charge;
+                    $breakdown[] = ['type'=>'water_out','label'=>'Sewerage ('.$pct.'%)','units_kl'=>round($kl,2),'rate'=>$cost,'charge'=>round($charge,2)];
+                }
+            }
 
-                $tierMin = (float) ($tier['min'] ?? 0);
-                $tierMax = isset($tier['max']) && $tier['max'] !== '' && $tier['max'] !== null 
-                    ? (float) $tier['max'] 
-                    : PHP_FLOAT_MAX;
-                $costPerKl = (float) ($tier['cost'] ?? 0);
-
-                $tierCapacity = $tierMax - $tierMin;
-                $litresInTier = min($remainingLitres, $tierCapacity);
-                $klInTier = $litresInTier / 1000;
-                $tierCharge = $klInTier * $costPerKl;
-
-                $total += $tierCharge;
-                $breakdown[] = [
-                    'tier' => $tierNumber,
-                    'min' => $tierMin,
-                    'max' => $tierMax === PHP_FLOAT_MAX ? null : $tierMax,
-                    'units' => $litresInTier,
-                    'units_kl' => round($klInTier, 2),
-                    'rate' => $costPerKl,
-                    'charge' => round($tierCharge, 2),
-                ];
-
-                $remainingLitres -= $litresInTier;
+            // WATER OUT ADDITIONAL
+            $woAdditional = $tariff->waterout_additional ?? [];
+            if (!empty($woAdditional)) {
+                foreach ($woAdditional as $item) {
+                    $pct = (float)($item['percentage'] ?? 100);
+                    $cost = (float)($item['cost'] ?? 0);
+                    $title = $item['title'] ?? 'Additional';
+                    $kl = ($consumption * $pct / 100) / 1000;
+                    $charge = $kl * $cost;
+                    $additionalTotal += $charge;
+                    $breakdown[] = ['type'=>'additional','label'=>$title.' ('.$pct.'%)','units_kl'=>round($kl,2),'rate'=>$cost,'charge'=>round($charge,2)];
+                }
             }
         } elseif ($type === 'electricity' && !empty($tariff->electricity)) {
-            $tiers = $tariff->electricity;
-            $remainingKwh = $consumption;
-            $tierNumber = 0;
-
-            foreach ($tiers as $tier) {
-                $tierNumber++;
-                if ($remainingKwh <= 0) break;
-
-                $tierMin = (float) ($tier['min'] ?? 0);
-                $tierMax = isset($tier['max']) && $tier['max'] !== '' && $tier['max'] !== null 
-                    ? (float) $tier['max'] 
-                    : PHP_FLOAT_MAX;
-                $costPerKwh = (float) ($tier['cost'] ?? 0);
-
-                $tierCapacity = $tierMax - $tierMin;
-                $kwhInTier = min($remainingKwh, $tierCapacity);
-                $tierCharge = $kwhInTier * $costPerKwh;
-
-                $total += $tierCharge;
-                $breakdown[] = [
-                    'tier' => $tierNumber,
-                    'min' => $tierMin,
-                    'max' => $tierMax === PHP_FLOAT_MAX ? null : $tierMax,
-                    'units' => $kwhInTier,
-                    'rate' => $costPerKwh,
-                    'charge' => round($tierCharge, 2),
-                ];
-
-                $remainingKwh -= $kwhInTier;
+            $remaining = $consumption;
+            $tierNum = 0;
+            foreach ($tariff->electricity as $tier) {
+                $tierNum++;
+                if ($remaining <= 0) break;
+                $min = (float)($tier['min'] ?? 0);
+                $max = isset($tier['max']) && $tier['max'] !== '' ? (float)$tier['max'] : PHP_FLOAT_MAX;
+                $cost = (float)($tier['cost'] ?? 0);
+                $capacity = $max - $min;
+                $inTier = min($remaining, $capacity);
+                $charge = $inTier * $cost;
+                $waterInTotal += $charge;
+                $breakdown[] = ['type'=>'electricity','tier'=>$tierNum,'label'=>'Tier '.$tierNum,'units'=>round($inTier,0),'rate'=>$cost,'charge'=>round($charge,2)];
+                $remaining -= $inTier;
             }
         }
 
+        // FIXED COSTS
+        if (!empty($tariff->fixed_costs)) {
+            foreach ($tariff->fixed_costs as $item) {
+                $val = (float)($item['value'] ?? 0);
+                $fixedTotal += $val;
+                $breakdown[] = ['type'=>'fixed','label'=>$item['name'] ?? 'Fixed','charge'=>round($val,2)];
+            }
+        }
+
+        // CUSTOMER COSTS
+        if ($type === 'water' && !empty($tariff->customer_costs)) {
+            foreach ($tariff->customer_costs as $item) {
+                $val = (float)($item['value'] ?? 0);
+                $customerTotal += $val;
+                $breakdown[] = ['type'=>'customer','label'=>$item['name'] ?? 'Customer','charge'=>round($val,2)];
+            }
+        }
+
+        $consumptionTotal = $waterInTotal + $waterOutTotal + $additionalTotal;
+        $total = $consumptionTotal + $fixedTotal + $customerTotal;
+
         return [
             'total' => round($total, 2),
+            'water_in_total' => round($waterInTotal, 2),
+            'water_out_total' => round($waterOutTotal, 2),
+            'additional_total' => round($additionalTotal, 2),
+            'fixed_total' => round($fixedTotal, 2),
+            'customer_total' => round($customerTotal, 2),
+            'consumption_total' => round($consumptionTotal, 2),
             'breakdown' => $breakdown,
         ];
     }
@@ -808,12 +972,17 @@ class BillingController extends Controller
                 'start_date' => $prevDate->format('Y-m-d'),
                 'end_date' => $currDate->format('Y-m-d'),
                 'days' => $days,
+                // Usage data
+                'total_used' => round($totalUnitsUsed, 2),
+                'daily_usage' => round($dailyUsageTotal, 2),
+                'meters' => $meterDetails,
+                // Charges
                 'consumption_charge' => round($consumptionWithVat, 2),
-                'balance_bf' => round($balanceBF, 2), // Can be negative (credit)
-                'period_total' => round($periodOwing, 2),
+                'balance_bf' => 0,
+                'period_total' => round($consumptionWithVat, 2),
                 'payments' => $periodPayments,
                 'total_payments' => round($totalPayments, 2),
-                'balance' => round($balance, 2),
+                'balance' => round($consumptionWithVat - $totalPayments, 2),
             ];
         }
 

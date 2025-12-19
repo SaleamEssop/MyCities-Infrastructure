@@ -52,6 +52,7 @@ services:
       - "9000"
     volumes:
       - laravel_public:/var/www/html/public
+      - laravel_storage:/var/www/html/storage
     healthcheck:
       test: ["CMD-SHELL", "php-fpm -t 2>/dev/null || exit 1"]
       interval: 10s
@@ -95,6 +96,7 @@ services:
       - mycities-network
     volumes:
       - laravel_public:/var/www/html/public:ro
+      - laravel_storage:/var/www/html/storage:ro
       - certbot_certs:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
     healthcheck:
@@ -116,6 +118,7 @@ services:
 volumes:
   mysql_data:
   laravel_public:
+  laravel_storage:
   certbot_certs:
   certbot_www:
 

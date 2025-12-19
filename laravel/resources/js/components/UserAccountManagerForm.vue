@@ -241,7 +241,7 @@
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="font-weight-bold text-muted">Tariff Template</label>
-                                                    <input type="text" class="form-control bg-light" :value="account.tariff?.template_name || 'Not set'" readonly disabled>
+                                                    <input type="text" class="form-control bg-light" :value="account.tariff_template?.template_name || 'Not set'" readonly disabled>
                                                     <small class="text-muted">Tariff cannot be changed</small>
                                                 </div>
                                             </div>
@@ -904,8 +904,8 @@ function getMeterTypeName(typeId) {
 
 // Check if account uses a Date-to-Date tariff
 function isDateToDateTariff(account) {
-    if (!account || !account.tariff) return false;
-    const billingType = account.tariff.billing_type || '';
+    if (!account || !account.tariff_template) return false;
+    const billingType = account.tariff_template.billing_type || '';
     return billingType.toUpperCase() === 'DATE_TO_DATE' || 
            billingType.toLowerCase().includes('date-to-date') ||
            billingType.toLowerCase().includes('date to date');

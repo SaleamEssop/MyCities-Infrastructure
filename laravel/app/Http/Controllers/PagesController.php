@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Page;
+use App\Models\Settings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
@@ -14,13 +15,28 @@ class PagesController extends Controller
      */
     public function index()
     {
+        $settings = Settings::first();
+        $demoMode = $settings->demo_mode ?? true;
+
         // Get root pages with their children
-        $pages = Page::root()
-            ->with(['children' => function($q) {
-                $q->orderBy('sort_order');
-            }])
-            ->orderBy('sort_order')
-            ->get();
+        if ($demoMode) {
+            // Demo mode: show all pages including demo content
+            $pages = Page::root()
+                ->with(['children' => function($q) {
+                    $q->orderBy('sort_order');
+                }])
+                ->orderBy('sort_order')
+                ->get();
+        } else {
+            // Production mode: hide demo pages
+            $pages = Page::root()
+                ->where('is_demo', false)
+                ->with(['children' => function($q) {
+                    $q->where('is_demo', false)->orderBy('sort_order');
+                }])
+                ->orderBy('sort_order')
+                ->get();
+        }
 
         return view('admin.pages.index', compact('pages'));
     }

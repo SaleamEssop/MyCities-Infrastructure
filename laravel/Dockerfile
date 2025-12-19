@@ -90,9 +90,18 @@ QUEUE_CONNECTION=${QUEUE_CONNECTION:-sync}\n\
 ENVFILE\n\
 fi\n\
 \n\
+# Ensure storage directories exist (especially when volume is empty)\n\
+mkdir -p /var/www/html/storage/app/public \\\n\
+    /var/www/html/storage/framework/cache/data \\\n\
+    /var/www/html/storage/framework/sessions \\\n\
+    /var/www/html/storage/framework/views\n\
 # Fix permissions\n\
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true\n\
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache\n\
+# Ensure storage symlink exists for public assets\n\
+if [ ! -L /var/www/html/public/storage ]; then\n\
+    ln -s /var/www/html/storage/app/public /var/www/html/public/storage\n\
+fi\n\
 \n\
 # Copy public files to volume if empty\n\
 if [ ! -f /var/www/html/public/index.php ]; then\n\
