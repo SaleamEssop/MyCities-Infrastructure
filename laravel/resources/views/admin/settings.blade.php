@@ -181,6 +181,150 @@
                 </div>
             </div>
 
+            <!-- Deployment Status Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-code-branch"></i> Deployment Status
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if($deploymentInfo['deployment_number'] || $deploymentInfo['last_deployment_id'])
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Last Deployment:</strong><br>
+                                @if($deploymentInfo['deployment_number'])
+                                    <span class="badge badge-primary badge-lg" style="font-size: 1.2em; padding: 0.5em 1em;">
+                                        <i class="fas fa-rocket"></i> Deployment #{{ $deploymentInfo['deployment_number'] }}
+                                    </span>
+                                @else
+                                    <span class="badge badge-primary badge-lg">{{ $deploymentInfo['last_deployment_id'] }}</span>
+                                @endif
+                                <br>
+                                <small class="text-muted">
+                                    @if($deploymentInfo['last_deployment_time'])
+                                        {{ $deploymentInfo['last_deployment_time'] }}
+                                    @else
+                                        Time not available
+                                    @endif
+                                    @if($deploymentInfo['last_deployment_id'] && $deploymentInfo['deployment_number'])
+                                        <br>Push ID: {{ $deploymentInfo['last_deployment_id'] }}
+                                    @endif
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Status:</strong><br>
+                                @if($deploymentInfo['deployment_status'] === 'SUCCESS')
+                                    <span class="badge badge-success badge-lg">
+                                        <i class="fas fa-check-circle"></i> SUCCESS
+                                    </span>
+                                @elseif($deploymentInfo['deployment_status'] === 'FAILED')
+                                    <span class="badge badge-danger badge-lg">
+                                        <i class="fas fa-times-circle"></i> FAILED
+                                    </span>
+                                @else
+                                    <span class="badge badge-secondary badge-lg">
+                                        <i class="fas fa-question-circle"></i> UNKNOWN
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        @if($deploymentInfo['current_commit'])
+                            <hr>
+                            <div class="row">
+                                <div class="col-12">
+                                    <strong>Current Server Commit:</strong><br>
+                                    <code class="text-primary">{{ substr($deploymentInfo['current_commit'], 0, 8) }}</code>
+                                    <small class="text-muted">({{ $deploymentInfo['current_commit'] }})</small>
+                                </div>
+                            </div>
+                        @endif
+                    @else
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>No deployment tracking information available.</strong><br>
+                            <small>Deployment tracking will appear here after running <code>deploy.bat</code></small>
+                        </div>
+                    @endif
+                    
+                    @if(!empty($deploymentInfo['repos_sync_status']))
+                        <hr>
+                        <h6 class="font-weight-bold mb-3">
+                            <i class="fas fa-sync-alt"></i> Repository Sync Status
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Repository</th>
+                                        <th>Status</th>
+                                        <th>Server Commit</th>
+                                        <th>GitHub Commit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($deploymentInfo['repos_sync_status'] as $repo)
+                                        <tr>
+                                            <td><strong>{{ $repo['name'] }}</strong></td>
+                                            <td>
+                                                @if($repo['error'])
+                                                    <span class="badge badge-secondary">
+                                                        <i class="fas fa-question-circle"></i> Error
+                                                    </span>
+                                                    <br><small class="text-muted">{{ $repo['error'] }}</small>
+                                                @elseif($repo['in_sync'])
+                                                    <span class="badge badge-success">
+                                                        <i class="fas fa-check-circle"></i> In Sync
+                                                    </span>
+                                                @elseif($repo['behind'])
+                                                    <span class="badge badge-danger">
+                                                        <i class="fas fa-exclamation-triangle"></i> Behind GitHub
+                                                    </span>
+                                                    <br><small class="text-danger">Server needs to pull latest changes</small>
+                                                @else
+                                                    <span class="badge badge-warning">
+                                                        <i class="fas fa-info-circle"></i> Diverged
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($repo['server_commit'])
+                                                    <code class="text-primary">{{ substr($repo['server_commit'], 0, 8) }}</code>
+                                                @else
+                                                    <span class="text-muted">N/A</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($repo['github_commit'])
+                                                    <code class="text-info">{{ substr($repo['github_commit'], 0, 8) }}</code>
+                                                @else
+                                                    <span class="text-muted">N/A</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        @php
+                            $outOfSync = collect($deploymentInfo['repos_sync_status'])->filter(function($repo) {
+                                return !$repo['error'] && !$repo['in_sync'];
+                            })->count();
+                        @endphp
+                        
+                        @if($outOfSync > 0)
+                            <div class="alert alert-danger mt-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Warning:</strong> {{ $outOfSync }} repository/repositories are out of sync with GitHub.
+                                <br><small>Run <code>deploy.bat</code> to sync the server with the latest GitHub commits.</small>
+                            </div>
+                        @endif
+                    @endif
+                </div>
+            </div>
+
             <!-- Schema Sync Info Card -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3">

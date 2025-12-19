@@ -1,0 +1,13 @@
+# Deployment tracking files (local state, not versioned)
+.deployment_number
+.last_push_id
+.last_push_time
+.last_infra_commit
+.last_laravel_commit
+.last_vue_commit
+
+# Server deployment tracking files (created on server)
+.last_deployment_number
+.last_deployment_id
+.last_deployment_time
+.deployment_status
