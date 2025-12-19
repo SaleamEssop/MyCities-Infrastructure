@@ -172,6 +172,13 @@
                 <span>Alarms</span></a>
         </li>
 
+        <!-- Nav Item - Settings -->
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('settings.index') }}">
+                <i class="fas fa-fw fa-cog"></i>
+                <span>Settings</span></a>
+        </li>
+
         <li class="nav-item">
             <a class="nav-link" href="{{ route('admin.logout') }}">
                 <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
