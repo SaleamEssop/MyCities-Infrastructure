@@ -24,7 +24,7 @@ services:
   # Laravel Backend (PHP-FPM for Nginx)
   laravel:
     build:
-      context: ./laravel
+      context: ../MyCities-Laravel-Docker
       dockerfile: Dockerfile
     container_name: mycities-laravel
     restart: unless-stopped
@@ -63,7 +63,7 @@ services:
   # Vue/Quasar Frontend (static)
   web:
     build:
-      context: ./vue-quasar
+      context: ../MyCities-Vue-Quasar-Docker
       dockerfile: Dockerfile
     container_name: mycities-web
     restart: unless-stopped
@@ -72,7 +72,7 @@ services:
     expose:
       - "80"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
